@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>运行日志 - 清水河畔消息监控系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .log-container {
+            max-height: 600px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+        }
+        .log-entry {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            background-color: white;
+        }
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        .log-timestamp {
+            color: #6c757d;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .log-message {
+            margin-top: 4px;
+            word-wrap: break-word;
+        }
+        .log-entry:hover {
+            background-color: #f8f9fa;
+        }
+        .log-entry.error {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+        .log-entry.warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+        .log-entry.success {
+            background-color: #d1edff;
+            border-left: 4px solid #0d6efd;
+        }
+        .log-entry.info {
+            background-color: #d1e7dd;
+            border-left: 4px solid #198754;
+        }
+        .filter-bar {
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 100;
+            padding: 15px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .auto-scroll {
+            position: sticky;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-chat-dots"></i> 清水河畔消息监控
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/messages">
+                    <i class="bi bi-envelope"></i> 消息列表
+                </a>
+                <a class="nav-link active" href="/logs">
+                    <i class="bi bi-journal-text"></i> 运行日志
+                </a>
+                <a class="nav-link" href="/config">
+                    <i class="bi bi-gear"></i> 配置管理
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="filter-bar">
+            <div class="row align-items-center">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" class="form-control" id="searchInput" 
+                               placeholder="搜索日志内容...">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="levelFilter">
+                        <option value="">所有级别</option>
+                        <option value="error">错误</option>
+                        <option value="warning">警告</option>
+                        <option value="success">成功</option>
+                        <option value="info">信息</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="autoScroll" checked>
+                        <label class="form-check-label" for="autoScroll">
+                            自动滚动
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="refreshLogs()">
+                            <i class="bi bi-arrow-clockwise"></i> 刷新
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="clearLogs()">
+                            <i class="bi bi-trash"></i> 清空
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-9">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-journal-text"></i> 运行日志
+                        </h5>
+                        <div class="text-muted">
+                            <span id="logCount">0</span> 条日志
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="logContainer" class="log-container">
+                            <!-- 日志内容将通过JavaScript动态加载 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="bi bi-graph-up"></i> 日志统计
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>错误</span>
+                                <span id="errorCount" class="badge bg-danger">0</span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>警告</span>
+                                <span id="warningCount" class="badge bg-warning">0</span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>成功</span>
+                                <span id="successCount" class="badge bg-success">0</span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>信息</span>
+                                <span id="infoCount" class="badge bg-info">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="bi bi-clock"></i> 最近活动
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="recentActivity">
+                            <!-- 最近活动将通过JavaScript动态加载 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let allLogs = [];
+        let filteredLogs = [];
+        let autoScrollEnabled = true;
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadLogs();
+            setupEventListeners();
+            setInterval(loadLogs, 3000); // 每3秒刷新一次
+        });
+        
+        function setupEventListeners() {
+            document.getElementById('searchInput').addEventListener('input', filterLogs);
+            document.getElementById('levelFilter').addEventListener('change', filterLogs);
+            document.getElementById('autoScroll').addEventListener('change', function() {
+                autoScrollEnabled = this.checked;
+            });
+        }
+        
+        function loadLogs() {
+            fetch('/api/logs')
+                .then(response => response.json())
+                .then(logs => {
+                    allLogs = logs;
+                    filterLogs();
+                    updateStatistics();
+                    updateRecentActivity();
+                })
+                .catch(error => {
+                    console.error('加载日志失败:', error);
+                });
+        }
+        
+        function filterLogs() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const levelFilter = document.getElementById('levelFilter').value;
+            
+            filteredLogs = allLogs.filter(log => {
+                const matchesSearch = log.message.toLowerCase().includes(searchTerm);
+                const matchesLevel = !levelFilter || getLogLevel(log.message) === levelFilter;
+                return matchesSearch && matchesLevel;
+            });
+            
+            displayLogs();
+        }
+        
+        function displayLogs() {
+            const container = document.getElementById('logContainer');
+            
+            if (filteredLogs.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="bi bi-search display-1 text-muted"></i>
+                        <h4 class="mt-3 text-muted">未找到匹配的日志</h4>
+                        <p class="text-muted">请尝试其他搜索条件</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = filteredLogs.map(log => {
+                const level = getLogLevel(log.message);
+                const levelClass = level ? `log-entry ${level}` : 'log-entry';
+                
+                return `
+                    <div class="${levelClass}">
+                        <div class="log-timestamp">${log.formattedTimestamp}</div>
+                        <div class="log-message">${escapeHtml(log.message)}</div>
+                    </div>
+                `;
+            }).join('');
+            
+            // 更新日志计数
+            document.getElementById('logCount').textContent = filteredLogs.length;
+            
+            // 自动滚动到底部
+            if (autoScrollEnabled) {
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+        
+        function getLogLevel(message) {
+            if (message.includes('❌') || message.includes('错误') || message.includes('失败')) {
+                return 'error';
+            } else if (message.includes('⚠️') || message.includes('警告')) {
+                return 'warning';
+            } else if (message.includes('✅') || message.includes('成功') || message.includes('已发送') || message.includes('已保存')) {
+                return 'success';
+            } else if (message.includes('ℹ️') || message.includes('信息') || message.includes('开始')) {
+                return 'info';
+            }
+            return '';
+        }
+        
+        function updateStatistics() {
+            const stats = {
+                error: 0,
+                warning: 0,
+                success: 0,
+                info: 0
+            };
+            
+            allLogs.forEach(log => {
+                const level = getLogLevel(log.message);
+                if (level && stats.hasOwnProperty(level)) {
+                    stats[level]++;
+                }
+            });
+            
+            document.getElementById('errorCount').textContent = stats.error;
+            document.getElementById('warningCount').textContent = stats.warning;
+            document.getElementById('successCount').textContent = stats.success;
+            document.getElementById('infoCount').textContent = stats.info;
+        }
+        
+        function updateRecentActivity() {
+            const recentLogs = allLogs.slice(-5).reverse();
+            const container = document.getElementById('recentActivity');
+            
+            if (recentLogs.length === 0) {
+                container.innerHTML = '<p class="text-muted">暂无活动</p>';
+                return;
+            }
+            
+            container.innerHTML = recentLogs.map(log => {
+                const level = getLogLevel(log.message);
+                const levelIcon = getLevelIcon(level);
+                
+                return `
+                    <div class="d-flex align-items-start mb-2">
+                        <div class="flex-shrink-0 me-2">
+                            <i class="bi ${levelIcon}"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="small text-muted">${log.formattedTimestamp}</div>
+                            <div class="small">${truncateText(log.message, 50)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function getLevelIcon(level) {
+            switch(level) {
+                case 'error': return 'bi-exclamation-triangle-fill text-danger';
+                case 'warning': return 'bi-exclamation-triangle text-warning';
+                case 'success': return 'bi-check-circle text-success';
+                case 'info': return 'bi-info-circle text-info';
+                default: return 'bi-circle text-muted';
+            }
+        }
+        
+        function truncateText(text, maxLength) {
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function refreshLogs() {
+            loadLogs();
+        }
+        
+        function clearLogs() {
+            if (confirm('确定要清空所有日志吗？')) {
+                fetch('/logs/clear', { method: 'POST' })
+                    .then(response => response.text())
+                    .then(result => {
+                        if (result === 'success') {
+                            loadLogs();
+                        }
+                    });
+            }
+        }
+    </script>
+</body>
+</html> 

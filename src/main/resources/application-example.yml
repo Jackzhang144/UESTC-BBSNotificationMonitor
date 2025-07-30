@@ -1,0 +1,45 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: bbs-monitor
+  thymeleaf:
+    cache: false
+    mode: HTML
+    encoding: UTF-8
+    servlet:
+      content-type: text/html
+
+# BBS监控配置示例
+bbs:
+  # 从浏览器开发者工具中复制的cookies字符串
+  cookies: "newbbs_a0th=your_cookie_value; newbbs_auth=your_auth_value"
+  
+  # 从浏览器开发者工具中复制的Authorization header值
+  auth-token: "your_auth_token_here"
+  
+  # 消息保存文件名
+  output-file: new_messages.json
+  
+  # 推送通知API模板（支持ChuckFang推送服务）
+  notification-api-template: http://api.chuckfang.com/{user_id}/BBS消息通知/{author}回复了您的帖子"{subject}"
+  
+  # 推送服务用户ID
+  notification-user-id: "your_push_user_id"
+  
+  # 检查间隔（秒）
+  check-interval-seconds: 15
+  
+  # 是否启用监控
+  enabled: true
+  
+  # 是否启用推送通知
+  notification-enabled: true
+
+logging:
+  level:
+    com.jackzhang144.bbs: INFO
+    org.springframework.web: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n" 

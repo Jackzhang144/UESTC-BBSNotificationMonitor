@@ -1,0 +1,30 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: bbs-monitor
+  thymeleaf:
+    cache: false
+    mode: HTML
+    encoding: UTF-8
+    servlet:
+      content-type: text/html
+
+# BBS监控配置
+bbs:
+  cookies: "请替换为你的cookies字符串"
+  auth-token: "请替换为你的认证token"
+  output-file: new_messages.json
+  notification-api-template: http://api.chuckfang.com/{user_id}/BBS消息通知/{author}回复了您的帖子"{subject}"
+  notification-user-id: "请替换为你的推送服务用户ID"
+  check-interval-seconds: 15
+  enabled: true
+  notification-enabled: true
+
+logging:
+  level:
+    com.jackzhang144.bbs: INFO
+    org.springframework.web: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n" 
