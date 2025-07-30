@@ -34,7 +34,7 @@
 
 ### 1. 克隆项目
 ```bash
-git clone https://github.com/your-username/UESTC-BBS.git
+git clone https://gitee.com/JackZhang144/UESTC-BBSNotificationMonitor.git
 cd UESTC-BBS
 ```
 
